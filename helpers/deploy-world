@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Deploy Terraria world to server
+# Usage: ./deploy-world.sh <server-ip>
+
+SERVER_IP="${1:-}"
+if [[ -z "$SERVER_IP" ]]; then
+  echo "Usage: $0 <server-ip>" >&2
+  exit 1
+fi
+
+LOCAL_WORLD="./worlds/Террария.wld"
+REMOTE_WORLDS_DIR="/opt/terraria-server/worlds"
+
+if [[ ! -f "$LOCAL_WORLD" ]]; then
+  echo "ERROR: Local world file not found: $LOCAL_WORLD" >&2
+  exit 1
+fi
+
+echo "==> Uploading world to server..."
+scp -P 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "$LOCAL_WORLD" \
+  "atlas@${SERVER_IP}:${REMOTE_WORLDS_DIR}/"
+
+echo "==> Setting file permissions..."
+ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}" \
+  "sudo chown atlas:atlas ${REMOTE_WORLDS_DIR}/Террария.wld"
+
+echo "==> Updating server configuration..."
+ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}" \
+  'sudo sed -i "s/autocreate=.*/autocreate=0/" /opt/terraria-server/config/serverconfig.txt && \
+   sudo sed -i "s|world=/opt/terraria-server/worlds/.*\.wld|world=/opt/terraria-server/worlds/Террария.wld|" /opt/terraria-server/config/serverconfig.txt && \
+   sudo sed -i "s/worldname=.*/worldname=Террария/" /opt/terraria-server/config/serverconfig.txt'
+
+echo "==> World uploaded and configuration updated"

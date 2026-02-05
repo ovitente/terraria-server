@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# === Settings (can be overridden via environment variables) ===
+BASE_DIR="${BASE_DIR:-/opt/terraria-server}"
+API_NAMES_URL="${API_NAMES_URL:-https://terraria.org/api/get/dedicated-servers-names}"
+DOWNLOAD_BASE_URL="${DOWNLOAD_BASE_URL:-https://terraria.org/api/download/pc-dedicated-server}"
+
+RELEASES_DIR="$BASE_DIR/releases"
+STATE_DIR="$BASE_DIR/state"
+LATEST_FILE="$STATE_DIR/latest_zip.txt"
+LOCK_DIR="$STATE_DIR/update.lock"
+CURRENT_LINK="$BASE_DIR/current"
+
+mkdir -p "$RELEASES_DIR" "$STATE_DIR"
+
+cleanup() {
+  rm -rf "${TMP_DIR:-}"
+  rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+# Simple lock to prevent parallel runs
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  echo "Another update is already running (lock: $LOCK_DIR)" >&2
+  exit 0
+fi
+
+TMP_DIR="$(mktemp -d)"
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "Missing dependency: $1" >&2; exit 1; }; }
+need curl
+need unzip
+need grep
+need sed
+
+get_latest_zip_name() {
+  # Parse JSON without jq: extract first occurrence of "terraria-server-....zip"
+  # Also matches "fixed" versions.
+  curl -fsSL "$API_NAMES_URL" \
+    | tr -d '\r\n' \
+    | grep -oE 'terraria-server-[0-9]+(-fixed)?\.zip' \
+    | head -n1
+}
+
+LATEST_ZIP="$(get_latest_zip_name || true)"
+if [[ -z "${LATEST_ZIP:-}" ]]; then
+  echo "ERROR: could not determine latest server zip from: $API_NAMES_URL" >&2
+  echo "Tip: try installing jq and parsing JSON explicitly, or check if API changed." >&2
+  exit 1
+fi
+
+OLD_ZIP=""
+if [[ -f "$LATEST_FILE" ]]; then
+  OLD_ZIP="$(cat "$LATEST_FILE" || true)"
+fi
+
+if [[ "$LATEST_ZIP" == "$OLD_ZIP" ]]; then
+  echo "No update: latest is still $LATEST_ZIP"
+  exit 0
+fi
+
+echo "Update available: $OLD_ZIP -> $LATEST_ZIP"
+
+ZIP_URL="$DOWNLOAD_BASE_URL/$LATEST_ZIP"
+ZIP_PATH="$TMP_DIR/$LATEST_ZIP"
+
+echo "Downloading: $ZIP_URL"
+curl -fL --retry 3 --retry-delay 2 -o "$ZIP_PATH" "$ZIP_URL"
+
+if [[ ! -s "$ZIP_PATH" ]]; then
+  echo "ERROR: downloaded file is empty: $ZIP_PATH" >&2
+  exit 1
+fi
+
+RELEASE_NAME="${LATEST_ZIP%.zip}"
+NEW_RELEASE_DIR="$RELEASES_DIR/$RELEASE_NAME"
+NEW_RELEASE_TMP="$TMP_DIR/extract"
+
+mkdir -p "$NEW_RELEASE_TMP"
+unzip -q "$ZIP_PATH" -d "$NEW_RELEASE_TMP"
+
+# Move extracted files as new release
+# (archive usually contains a folder with version number and Windows/Linux/Mac subfolders)
+rm -rf "$NEW_RELEASE_DIR"
+mkdir -p "$NEW_RELEASE_DIR"
+# Move extracted contents into release directory
+cp -a "$NEW_RELEASE_TMP"/. "$NEW_RELEASE_DIR/"
+
+# Ensure binaries are executable
+find "$NEW_RELEASE_DIR" -name "*.bin.x86_64" -exec chmod +x {} \;
+find "$NEW_RELEASE_DIR" -name "TerrariaServer" -type f -exec chmod +x {} \;
+
+# Switch current -> new release
+ln -sfn "$NEW_RELEASE_DIR" "$CURRENT_LINK"
+
+echo "$LATEST_ZIP" > "$LATEST_FILE"
+
+echo "Updated OK."
+echo "Current release: $CURRENT_LINK -> $(readlink -f "$CURRENT_LINK")"
+echo "Zip: $LATEST_ZIP"
+
+# Auto-restart Terraria service if running
+if command -v systemctl >/dev/null 2>&1; then
+  if systemctl is-active --quiet terraria.service 2>/dev/null; then
+    echo "Restarting Terraria service..."
+    systemctl restart terraria.service
+    echo "Service restarted successfully"
+  fi
+fi

@@ -1,0 +1,16 @@
+#cloud-config
+# SSH ключи для root
+ssh_authorized_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIoTZ8NU3k+oFc8NuQkeVnE4dd0EXMNMqhTHyAPisNZd Ivan-Kostrubin
+
+users:
+  - name: atlas
+    groups: sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIoTZ8NU3k+oFc8NuQkeVnE4dd0EXMNMqhTHyAPisNZd Ivan-Kostrubin
+
+package_update: true
+package_upgrade: true

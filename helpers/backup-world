@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Backup Terraria world from server with timestamp
+# Usage: ./backup-world.sh [server-ip]
+# If server-ip is not provided, will try to get it from hcloud
+
+SERVER_IP="${1:-$(hcloud server ip terraria-server 2>/dev/null || echo "")}"
+WORLD_NAME="Террария.wld"
+REMOTE_WORLD_PATH="/opt/terraria-server/worlds/$WORLD_NAME"
+LOCAL_WORLDS_DIR="./worlds"
+TIMESTAMP=$(date +%d%m%Y%H%M)
+BACKUP_NAME="Terraria-${TIMESTAMP}.wld"
+
+if [[ -z "$SERVER_IP" ]]; then
+  echo "ERROR: Cannot determine server IP" >&2
+  echo "Usage: $0 <server-ip>" >&2
+  echo "Or ensure hcloud CLI is configured and terraria-server exists" >&2
+  exit 1
+fi
+
+mkdir -p "$LOCAL_WORLDS_DIR"
+
+echo "==> Downloading world from server $SERVER_IP..."
+scp -P 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}:${REMOTE_WORLD_PATH}" \
+  "${LOCAL_WORLDS_DIR}/${BACKUP_NAME}"
+
+echo "==> Backup saved: ${LOCAL_WORLDS_DIR}/${BACKUP_NAME}"
+ls -lh "${LOCAL_WORLDS_DIR}/${BACKUP_NAME}"

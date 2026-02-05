@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Wrapper script for launching Terraria server via systemd
+# Dynamically resolves /opt/terraria-server/current symlink
+
+BASE_DIR="${BASE_DIR:-/opt/terraria-server}"
+CURRENT="$BASE_DIR/current"
+CONFIG="${CONFIG:-$BASE_DIR/config/serverconfig.txt}"
+
+if [[ ! -L "$CURRENT" ]]; then
+  echo "ERROR: $CURRENT is not a symlink" >&2
+  exit 1
+fi
+
+if [[ ! -f "$CONFIG" ]]; then
+  echo "ERROR: Config file not found: $CONFIG" >&2
+  exit 1
+fi
+
+RELEASE_DIR="$(readlink -f "$CURRENT")"
+
+if [[ ! -d "$RELEASE_DIR" ]]; then
+  echo "ERROR: Release directory does not exist: $RELEASE_DIR" >&2
+  exit 1
+fi
+
+# Find Linux folder inside release (structure: releases/terraria-server-XXXX/XXXX/Linux/)
+LINUX_DIR=$(find "$RELEASE_DIR" -type d -name "Linux" -path "*/[0-9]*/Linux" | head -1)
+
+if [[ -z "$LINUX_DIR" ]] || [[ ! -d "$LINUX_DIR" ]]; then
+  echo "ERROR: Linux directory not found in $RELEASE_DIR" >&2
+  exit 1
+fi
+
+BINARY="$LINUX_DIR/TerrariaServer.bin.x86_64"
+
+if [[ ! -x "$BINARY" ]]; then
+  echo "ERROR: Binary not found or not executable: $BINARY" >&2
+  exit 1
+fi
+
+echo "Starting Terraria Server"
+echo "Release: $RELEASE_DIR"
+echo "Binary: $BINARY"
+echo "Config: $CONFIG"
+echo "---"
+
+cd "$LINUX_DIR"
+exec ./TerrariaServer.bin.x86_64 -config "$CONFIG"

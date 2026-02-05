@@ -1,0 +1,46 @@
+# Terraria Server Configuration
+# Copy this file to /opt/terraria-server/config/serverconfig.txt and customize
+
+# World file path (will be created if autocreate is set)
+world=/opt/terraria-server/worlds/MyWorld.wld
+
+# Automatically create a new world if it doesn't exist
+# 1=Small, 2=Medium, 3=Large
+autocreate=2
+
+# World name
+worldname=MyWorld
+
+# World difficulty
+# 0=Classic, 1=Expert, 2=Master, 3=Journey
+difficulty=1
+
+# Maximum number of players
+maxplayers=8
+
+# Server port
+port=7777
+
+# Server password (leave empty for no password)
+password=
+
+# Message of the day
+motd=Welcome to Terraria Server!
+
+# World save path
+worldpath=/opt/terraria-server/worlds/
+
+# Server language
+# en-US = English
+# ru-RU = Russian
+language=en-US
+
+# Disable automatic announcements
+npcstream=60
+
+# Priority (0=Realtime, 1=High, 2=AboveNormal, 3=Normal, 4=BelowNormal, 5=Idle)
+priority=1
+
+# Reduce enemy spawn rate (0-10)
+# Higher value = fewer enemies
+secure=1

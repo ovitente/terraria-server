@@ -1,0 +1,16 @@
+# Backups
+backups/
+*.backup
+*.bak
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Terraria server files
+ts/
+
+# World files (place your world in worlds/ directory)
+worlds/*
+!worlds/.gitkeep

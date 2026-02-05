@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Initial Terraria server deployment with automatic world upload
+# Usage: ./initial-deploy.sh <server-ip>
+
+SERVER_IP="${1:-}"
+if [[ -z "$SERVER_IP" ]]; then
+  echo "Usage: $0 <server-ip>" >&2
+  exit 1
+fi
+
+echo "==> Step 1/6: Installing dependencies..."
+ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}" \
+  'sudo apt update && sudo apt install -y curl unzip'
+
+echo "==> Step 2/6: Copying server-update script..."
+scp -P 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  helpers/server-update "atlas@${SERVER_IP}:/tmp/"
+
+ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}" \
+  'sudo mkdir -p /opt/terraria-server && \
+   sudo mv /tmp/server-update /opt/terraria-server/ && \
+   sudo chmod +x /opt/terraria-server/server-update && \
+   sudo chown -R atlas:atlas /opt/terraria-server'
+
+echo "==> Step 3/6: Running server-update (downloading Terraria)..."
+ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}" \
+  'cd /opt/terraria-server && sudo ./server-update'
+
+echo "==> Step 4/6: Creating directories and uploading world..."
+ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}" \
+  'sudo mkdir -p /opt/terraria-server/{config,worlds} && sudo chown -R atlas:atlas /opt/terraria-server'
+
+./helpers/deploy-world "$SERVER_IP"
+
+echo "==> Step 5/6: Copying configs and scripts..."
+scp -P 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  helpers/terraria-start serverconfig.example.txt "atlas@${SERVER_IP}:/tmp/"
+scp -P 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  helpers/systemd/terraria.service helpers/systemd/terraria-restart.service helpers/systemd/terraria-restart.path "atlas@${SERVER_IP}:/tmp/"
+
+ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}" \
+  'sudo mv /tmp/terraria-start /opt/terraria-server/ && \
+   sudo chmod +x /opt/terraria-server/terraria-start && \
+   sudo sed -i "s/\r$//" /opt/terraria-server/terraria-start && \
+   sudo mv /tmp/serverconfig.example.txt /opt/terraria-server/config/serverconfig.txt && \
+   sudo sed -i "s/autocreate=2/autocreate=0/" /opt/terraria-server/config/serverconfig.txt && \
+   sudo sed -i "s|world=/opt/terraria-server/worlds/MyWorld.wld|world=/opt/terraria-server/worlds/Террария.wld|" /opt/terraria-server/config/serverconfig.txt && \
+   sudo sed -i "s/worldname=MyWorld/worldname=Террария/" /opt/terraria-server/config/serverconfig.txt && \
+   sudo mv /tmp/terraria*.service /tmp/terraria*.path /etc/systemd/system/ && \
+   sudo chmod 644 /etc/systemd/system/terraria* && \
+   sudo chown -R atlas:atlas /opt/terraria-server'
+
+echo "==> Step 6/6: Starting services..."
+ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}" \
+  'sudo systemctl daemon-reload && \
+   sudo systemctl enable terraria.service terraria-restart.path && \
+   sudo systemctl start terraria.service terraria-restart.path'
+
+echo "==> Deployment completed successfully!"
+echo "==> Checking status in 30 seconds..."
+sleep 30
+ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+  "atlas@${SERVER_IP}" \
+  'sudo systemctl status terraria --no-pager | head -15'

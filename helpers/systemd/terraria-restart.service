@@ -1,0 +1,7 @@
+[Unit]
+Description=Restart Terraria Server after update
+After=terraria.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl restart terraria.service

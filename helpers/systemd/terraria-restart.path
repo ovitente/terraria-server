@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch for Terraria server updates
+Documentation=https://terraria.fandom.com/wiki/Server
+
+[Path]
+PathModified=/opt/terraria-server/current
+Unit=terraria-restart.service
+
+[Install]
+WantedBy=multi-user.target
