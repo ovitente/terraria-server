@@ -60,12 +60,12 @@ Simple automated Terraria server deployment on Hetzner Cloud.
 
 **IMPORTANT:** Place your world file in the `worlds/` directory. Only one world file should be present.
 
-The world file must be named `Террария.wld` (or update the scripts to match your world name).
+The world file must be named `Terraria.wld` (or update the scripts to match your world name).
 
 Example:
 ```bash
 # Place your world file
-cp /path/to/your/world.wld worlds/Террария.wld
+cp /path/to/your/world.wld worlds/Terraria.wld
 
 # Deploy to server
 make deploy-world

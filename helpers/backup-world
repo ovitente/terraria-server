@@ -6,7 +6,7 @@ set -euo pipefail
 # If server-ip is not provided, will try to get it from hcloud
 
 SERVER_IP="${1:-$(hcloud server ip terraria-server 2>/dev/null || echo "")}"
-WORLD_NAME="Террария.wld"
+WORLD_NAME="Terraria.wld"
 REMOTE_WORLD_PATH="/opt/terraria-server/worlds/$WORLD_NAME"
 LOCAL_WORLDS_DIR="./worlds"
 TIMESTAMP=$(date +%d%m%Y%H%M)

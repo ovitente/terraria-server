@@ -10,7 +10,7 @@ if [[ -z "$SERVER_IP" ]]; then
   exit 1
 fi
 
-LOCAL_WORLD="./worlds/Террария.wld"
+LOCAL_WORLD="./worlds/Terraria.wld"
 REMOTE_WORLDS_DIR="/opt/terraria-server/worlds"
 
 if [[ ! -f "$LOCAL_WORLD" ]]; then
@@ -26,13 +26,18 @@ scp -P 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/
 echo "==> Setting file permissions..."
 ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
   "atlas@${SERVER_IP}" \
-  "sudo chown atlas:atlas ${REMOTE_WORLDS_DIR}/Террария.wld"
+  "sudo chown atlas:atlas ${REMOTE_WORLDS_DIR}/Terraria.wld"
 
 echo "==> Updating server configuration..."
 ssh -p 22 -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
   "atlas@${SERVER_IP}" \
-  'sudo sed -i "s/autocreate=.*/autocreate=0/" /opt/terraria-server/config/serverconfig.txt && \
-   sudo sed -i "s|world=/opt/terraria-server/worlds/.*\.wld|world=/opt/terraria-server/worlds/Террария.wld|" /opt/terraria-server/config/serverconfig.txt && \
-   sudo sed -i "s/worldname=.*/worldname=Террария/" /opt/terraria-server/config/serverconfig.txt'
+  'if [ -f /opt/terraria-server/config/serverconfig.txt ]; then
+     sudo sed -i "s/autocreate=.*/autocreate=0/" /opt/terraria-server/config/serverconfig.txt && \
+     sudo sed -i "s|world=/opt/terraria-server/worlds/.*\.wld|world=/opt/terraria-server/worlds/Terraria.wld|" /opt/terraria-server/config/serverconfig.txt && \
+     sudo sed -i "s/worldname=.*/worldname=Terraria/" /opt/terraria-server/config/serverconfig.txt
+     echo "Configuration updated"
+   else
+     echo "Configuration file not found, skipping (will be configured during initial setup)"
+   fi'
 
-echo "==> World uploaded and configuration updated"
+echo "==> World uploaded"

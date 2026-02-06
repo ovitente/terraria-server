@@ -83,10 +83,31 @@ create-initial:
 		--image $(BASE_IMAGE) \
 		--firewall $(FIREWALL_NAME) \
 		--user-data-from-file cloud-init.yaml
-	@echo "==> Server created! Waiting for cloud-init to complete..."
-	@sleep 30
+	@echo "==> Server created! Waiting for SSH to be ready..."
+	@sleep 15
 	@SERVER_IP=$$(hcloud server ip $(SERVER_NAME)) && \
 	echo "IP: $$SERVER_IP" && \
+	echo "" && \
+	echo "==> Checking SSH connectivity..." && \
+	for i in {1..60}; do \
+	  if ssh -o ConnectTimeout=5 -o BatchMode=yes \
+	       -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+	       -i ~/.ssh/personal $(SSH_USER)@$$SERVER_IP true 2>/dev/null; then \
+	    echo "==> SSH ready after $$((15 + i*5)) seconds"; \
+	    break; \
+	  fi; \
+	  if [ $$i -eq 60 ]; then \
+	    echo "ERROR: SSH connection timeout after 5 minutes" >&2; \
+	    exit 1; \
+	  fi; \
+	  echo "SSH not ready, attempt $$i/60..."; \
+	  sleep 5; \
+	done && \
+	echo "" && \
+	echo "==> Waiting for cloud-init to complete..." && \
+	ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+	  -i ~/.ssh/personal $(SSH_USER)@$$SERVER_IP \
+	  'cloud-init status --wait' && \
 	echo "" && \
 	echo "==> Starting automatic deployment..." && \
 	$(INITIAL_DEPLOY_SCRIPT) "$$SERVER_IP"
