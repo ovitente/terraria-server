@@ -16,7 +16,7 @@ SSH_PORT ?= 22
 SSH_USER ?= atlas
 BASE_IMAGE ?= ubuntu-24.04
 BACKUP_DIR ?= ./backups
-BACKUP_REMOTE_PATH ?= /home/atlas/.local/share/Terraria
+BACKUP_REMOTE_PATH ?= /opt/terraria-server/worlds/
 INITIAL_DEPLOY_SCRIPT ?= ./helpers/initial-deploy
 
 # ==== MAIN COMMANDS ====
@@ -36,6 +36,7 @@ help:
 	@echo "  make logs            - Show last 50 lines of Terraria logs"
 	@echo "  make logs-live       - Show Terraria logs in real-time"
 	@echo "  make restart         - Restart Terraria server"
+	@echo "  make update          - Check and install Terraria server updates"
 	@echo "  make ip              - Show server IP address"
 	@echo "  make ssh             - Connect to server"
 	@echo "  make firewall-create - Create firewall rules"
@@ -217,6 +218,17 @@ restart:
 		$(SSH_USER)@$$(hcloud server ip $(SERVER_NAME)) \
 		'sudo systemctl restart terraria'
 	@echo "==> Server restarted"
+
+.PHONY: update
+update:
+	@echo "==> Checking for Terraria server updates..."
+	@ssh -p $(SSH_PORT) -i ~/.ssh/personal -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+		$(SSH_USER)@$$(hcloud server ip $(SERVER_NAME)) \
+		'cd /opt/terraria-server && sudo ./server-update'
+	@echo ""
+	@echo "==> Update completed! Checking server status..."
+	@sleep 3
+	@make server-status
 
 .PHONY: backup-world
 backup-world:
