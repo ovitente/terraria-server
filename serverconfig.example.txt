@@ -33,7 +33,7 @@ worldpath=/opt/terraria-server/worlds/
 # Server language
 # en-US = English
 # ru-RU = Russian
-language=en-US
+language=ru-RU
 
 # Disable automatic announcements
 npcstream=60
@@ -43,4 +43,4 @@ priority=1
 
 # Reduce enemy spawn rate (0-10)
 # Higher value = fewer enemies
-secure=1
+secure=0
